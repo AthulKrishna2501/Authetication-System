@@ -2,6 +2,8 @@ package firebase
 
 import (
 	"context"
+	"errors"
+	"os"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
@@ -9,16 +11,21 @@ import (
 )
 
 func InitFirebase() (*auth.Client, error) {
-	opt := option.WithCredentialsFile("firebase/firebasekey.json")
+	creds := os.Getenv("FIREBASE_CREDENTIALS")
+	if creds == "" {
+		return nil, errors.New("FIREBASE_CREDENTIALS_JSON environment variable is not set")
+	}
+
+	opt := option.WithCredentialsJSON([]byte(creds))
 	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		return nil, err
 	}
 
-	firebaseClient, err := app.Auth(context.Background())
+	client, err := app.Auth(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	return firebaseClient, nil
+	return client, nil
 }
