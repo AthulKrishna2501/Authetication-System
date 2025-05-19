@@ -13,9 +13,8 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error Loading .env file %v", err)
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found; using environment variables from Render")
 	}
 
 	firebaseClient, err := firebase.InitFirebase()
@@ -59,7 +58,5 @@ func main() {
 	if err := router.Run(":2500"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
-
-	router.Run(":2500")
 
 }
