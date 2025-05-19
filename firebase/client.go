@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
@@ -13,8 +14,10 @@ import (
 func InitFirebase() (*auth.Client, error) {
 	creds := os.Getenv("FIREBASE_CREDENTIALS")
 	if creds == "" {
-		return nil, errors.New("FIREBASE_CREDENTIALS_JSON environment variable is not set")
+		return nil, errors.New("FIREBASE_CREDENTIALS environment variable is not set")
 	}
+
+	creds = strings.ReplaceAll(creds, `\n`, "\n")
 
 	opt := option.WithCredentialsJSON([]byte(creds))
 	app, err := firebase.NewApp(context.Background(), nil, opt)
