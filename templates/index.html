@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Factor Authentication Setup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        img {
+            margin: 20px 0;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #fff;
+        }
+        p {
+            color: #555;
+            font-size: 16px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Setup Two-Factor Authentication</h1>
+    <p>Scan the QR code below with your authenticator app:</p>
+    <img src="/2fa/qr/image/{{.token}}" alt="QR Code">
+    <p>Or enter this secret manually: <strong>{{.secret}}</strong></p>
+</body>
+</html>
