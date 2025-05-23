@@ -15,29 +15,28 @@
             margin: 0;
             background-color: #f0f0f0;
         }
-        h1 {
-            color: #333;
-        }
-        img {
-            margin: 20px 0;
-            border: 1px solid #ccc;
-            padding: 10px;
-            background-color: #fff;
-        }
-        p {
-            color: #555;
-            font-size: 16px;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-        }
+        h1 { color: #333; }
+        img { margin: 20px 0; border: 1px solid #ccc; padding: 10px; background-color: #fff; }
+        p { color: #555; font-size: 16px; }
+        .error { color: red; font-weight: bold; }
+        form { margin-top: 20px; }
+        input[type="text"] { padding: 8px; font-size: 16px; }
+        button { padding: 8px 16px; font-size: 16px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #45a049; }
     </style>
 </head>
 <body>
     <h1>Setup Two-Factor Authentication</h1>
     <p>Scan the QR code below with your authenticator app:</p>
-    <img src="/2fa/qr/image/{{.token}}" alt="QR Code">
+    <img src="/2fa/qr/{{.token}}/image" alt="QR Code">
     <p>Or enter this secret manually: <strong>{{.secret}}</strong></p>
+    <p>After scanning, enter the 6-digit code from your authenticator app:</p>
+    <form action="/2fa/verify-qr/{{.token}}" method="POST">
+        <input type="text" name="code" placeholder="Enter TOTP code" maxlength="6" required>
+        <button type="submit">Verify</button>
+    </form>
+    {{if .error}}
+        <p class="error">{{.error}}</p>
+    {{end}}
 </body>
 </html>

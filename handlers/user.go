@@ -702,8 +702,6 @@ func (as *AuthService) EnableTwoFactorAuthentication(c *gin.Context) {
 		return
 	}
 
-
-
 	var secret string
 	var qrLink string
 	if req.Enable {
@@ -767,6 +765,122 @@ func (as *AuthService) EnableTwoFactorAuthentication(c *gin.Context) {
 		response["qrLink"] = qrLink
 	}
 	c.JSON(http.StatusOK, response)
+}
+
+func (as *AuthService) VerifyQRCodeAuthentication(c *gin.Context) {
+	token := c.Param("token")
+	log.Printf("Attempting to verify QR code authentication for token: %s", token)
+
+	code := c.PostForm("code")
+	if code == "" {
+		log.Printf("Missing TOTP code for token: %s", token)
+		c.HTML(http.StatusBadRequest, "index.html", gin.H{
+			"token": token,
+			"error": "Please enter a TOTP code",
+		})
+		return
+	}
+
+	collection := as.mongoClient.Database("auth").Collection("qrcodes")
+	var qrDoc bson.M
+	err := collection.FindOne(context.Background(), bson.M{"token": token}).Decode(&qrDoc)
+	if err != nil {
+		log.Printf("QR code not found for token: %s, error: %v", token, err)
+		c.HTML(http.StatusNotFound, "index.html", gin.H{
+			"token": token,
+			"error": "QR code not found or expired",
+		})
+		return
+	}
+
+	var expiresAt time.Time
+	switch v := qrDoc["expires_at"].(type) {
+	case time.Time:
+		expiresAt = v
+	case string:
+		parsed, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			log.Printf("Failed to parse expires_at for token: %s, error: %v", token, err)
+			c.HTML(http.StatusInternalServerError, "index.html", gin.H{
+				"token": token,
+				"error": "Invalid QR code data",
+			})
+			return
+		}
+		expiresAt = parsed
+	case primitive.DateTime:
+		expiresAt = time.Unix(int64(v)/1000, (int64(v)%1000)*1000000)
+	default:
+		log.Printf("Invalid expires_at type for token: %s, got: %T", token, v)
+		c.HTML(http.StatusInternalServerError, "index.html", gin.H{
+			"token": token,
+			"error": "Invalid QR code data",
+		})
+		return
+	}
+
+	if expiresAt.Before(time.Now()) {
+		log.Printf("QR code expired for token: %s, expires_at: %v", token, expiresAt)
+		c.HTML(http.StatusGone, "index.html", gin.H{
+			"token": token,
+			"error": "QR code expired",
+		})
+		return
+	}
+
+	secret, ok := qrDoc["secret"].(string)
+	if !ok {
+		log.Printf("Invalid secret type for token: %s, got: %T", token, qrDoc["secret"])
+		c.HTML(http.StatusInternalServerError, "index.html", gin.H{
+			"token": token,
+			"error": "Invalid QR code data",
+		})
+		return
+	}
+
+	uid, ok := qrDoc["uid"].(string)
+	if !ok {
+		log.Printf("Invalid uid type for token: %s, got: %T", token, qrDoc["uid"])
+		c.HTML(http.StatusInternalServerError, "index.html", gin.H{
+			"token": token,
+			"error": "Invalid QR code data",
+		})
+		return
+	}
+
+	if !utils.VerifyTOTPCode(secret, code) {
+		log.Printf("Invalid TOTP code for token: %s", token)
+		c.HTML(http.StatusUnauthorized, "index.html", gin.H{
+			"token":  token,
+			"secret": secret,
+			"error":  "Invalid TOTP code",
+		})
+		return
+	}
+
+	userCollection := as.mongoClient.Database("auth").Collection("users")
+	_, err = userCollection.UpdateOne(context.Background(), bson.M{"uid": uid}, bson.M{
+		"$set": bson.M{
+			"is_2f_verified":   true,
+			"last_2f_verified": time.Now(),
+		},
+	})
+	if err != nil {
+		log.Printf("Failed to update 2FA verification status for uid: %s, error: %v", uid, err)
+		c.HTML(http.StatusInternalServerError, "index.html", gin.H{
+			"token": token,
+			"error": "Failed to update verification status",
+		})
+		return
+	}
+
+	_, err = collection.DeleteOne(context.Background(), bson.M{"token": token})
+	if err != nil {
+		log.Printf("Failed to delete QR code for token: %s, error: %v", token, err)
+	}
+
+	log.Printf("Successfully verified 2FA for token: %s, uid: %s", token, uid)
+	c.HTML(http.StatusOK, "success.html", gin.H{})
 }
 
 func (as *AuthService) ServeQRCodePage(c *gin.Context) {
