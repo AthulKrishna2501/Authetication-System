@@ -41,7 +41,7 @@ func main() {
 	router.POST("/forgot-password", authService.ForgotPassword)
 	router.POST("/reset-password", authService.ResetPassword)
 	router.POST("/verify-credentials", authService.VerifyCredentials)
-
+	router.POST("/2fa/verify-qr/:token", authService.VerifyQRCodeAuthentication) // Ensure this is present
 	protected := router.Group("/auth")
 	protected.Use(utils.AuthMiddleware())
 	{
